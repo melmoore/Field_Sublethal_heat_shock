@@ -24,11 +24,24 @@ View(slhs)
 
 #---------------------
 
+#Fixing typo in date wander for id 426: mass was put into date column, which converted into a date string
+#when downloaded from Google drive. Went back to the original google drive sheet, found the error
+#and original mass. Searched through google drive version history, and found that the mass was input
+#on 9/8/18 (Julian day 251), which makes this the most likely date of wandering
+
+which(slhs$id==426)
+
+slhs[208, 56]<-251
+slhs[208, 21]<-5099.05
+
+
+#--------------------
 
 #Calculate dev times
 
 slhs$ttwand<-slhs$date.wand.j - slhs$date.hatch.j
-slhs$ttem<-slhs$date.em.j - slhs$date.ovp.j
+slhs$ttem.w<-slhs$date.em.j - slhs$date.ovp.j
+slhs$ttem.h<-slhs$date.em.j - slhs$date.hatch.j
 slhs$tt3<-slhs$date.3.j - slhs$date.hatch.j
 slhs$tt4<-slhs$date.4.j - slhs$date.hatch.j
 slhs$tt5<-slhs$date.5.j - slhs$date.hatch.j
@@ -49,7 +62,8 @@ slhs$tt4[is.na(slhs$tt4)]<-0
 slhs$tt5[is.na(slhs$tt5)]<-0
 slhs$tt6[is.na(slhs$tt6)]<-0
 slhs$tt7[is.na(slhs$tt7)]<-0
-slhs$ttem[is.na(slhs$ttem)]<-0
+slhs$ttem.w[is.na(slhs$ttem.w)]<-0
+slhs$ttem.h[is.na(slhs$ttem.h)]<-0
 slhs$ttwand[is.na(slhs$ttwand)]<-0
 slhs$ttcull[is.na(slhs$ttcull)]<-0
 slhs$ttp5.1[is.na(slhs$ttp5.1)]<-0
@@ -64,7 +78,8 @@ slhs$tt4<-ifelse(slhs$tt4 < 0, 0, slhs$tt4)
 slhs$tt5<-ifelse(slhs$tt5 < 0, 0, slhs$tt5)
 slhs$tt6<-ifelse(slhs$tt6 < 0, 0, slhs$tt6)
 slhs$tt7<-ifelse(slhs$tt7 < 0, 0, slhs$tt7)
-slhs$ttem<-ifelse(slhs$ttem < 0, 0, slhs$ttem)
+slhs$ttem.w<-ifelse(slhs$ttem.w < 0, 0, slhs$ttem.w)
+slhs$ttem.h<-ifelse(slhs$ttem.h < 0, 0, slhs$ttem.h)
 slhs$ttwand<-ifelse(slhs$ttwand < 0, 0, slhs$ttwand)
 slhs$ttcull<-ifelse(slhs$ttcull < 0, 0, slhs$ttcull)
 slhs$ttp5.1<-ifelse(slhs$ttp5.1 < 0, 0, slhs$ttp5.1)
@@ -79,7 +94,8 @@ slhs$tt4[(slhs$tt4)=="0"]<-NA
 slhs$tt5[(slhs$tt5)=="0"]<-NA
 slhs$tt6[(slhs$tt6)=="0"]<-NA
 slhs$tt7[(slhs$tt7)=="0"]<-NA
-slhs$ttem[(slhs$ttem)=="0"]<-NA
+slhs$ttem.w[(slhs$ttem.w)=="0"]<-NA
+slhs$ttem.h[(slhs$ttem.h)=="0"]<-NA
 slhs$ttwand[(slhs$ttwand)=="0"]<-NA
 slhs$ttcull[(slhs$ttcull)=="0"]<-NA
 slhs$ttp5.1[(slhs$ttp5.1)=="0"]<-NA
@@ -142,7 +158,7 @@ slhs.plng$instar<-gsub("48", "", slhs.plng$instar)
 
 slhs.age<-slhs.np %>% gather(instar, age, tt3, tt4, tt5, tt6, tt7, ttwand)
 
-slhs.page<-slhs.para %>% gather(instar, age, tt3, tt4, tt5, tt6, tt7, ttem, 
+slhs.page<-slhs.para %>% gather(instar, age, tt3, tt4, tt5, tt6, tt7, ttem.w, ttem.h, 
                                 ttp5.1, ttp5.2, ttp5.3, ttp5.4, ttp5.5)
 
 slhs.age$instar<-gsub("tt", "", slhs.age$instar)
@@ -180,6 +196,8 @@ slhs.plng$stage<-ifelse(slhs.plng$stage == "5" | slhs.plng$stage == "6" |
                           slhs.plng$stage == "cull" | slhs.plng$stage == "wand",
                       slhs.plng$stage, 0)
 
+
+
 #------------------
 
 #Quick look at dist of time to wandering amongst treatments; and prop that had emergence at each treat
@@ -211,9 +229,26 @@ ttw.plot2+geom_point(
 
 #box plot of ttwand
 
-ttw.boxplot<-ggplot(slhs.cl, aes(x=test.temp, y=ttwand, group=interaction(test.temp, treat.para),color=treat.para))
-ttw.boxplot+geom_boxplot()
+ttw.boxplot<-ggplot(slhs.cl, aes(x=test.temp, y=ttwand, group=interaction(test.temp, treat.para),fill=treat.para))
+ttw.boxplot+geom_boxplot(
+)+scale_fill_manual(values = c("grey", "red"),
+                    breaks=c("np", "p"),
+                    name="Para treatment",
+                    label=c("NP", "P"))
 
+
+
+#box plot of mass wand
+
+slhs.cl$mass.wand[slhs.cl$mass.wand=="0"]<-NA
+
+massw.boxplot<-ggplot(slhs.cl, aes(x=test.temp, y=mass.wand, 
+                                   group=interaction(test.temp, treat.para),fill=treat.para))
+massw.boxplot+geom_boxplot(
+)+scale_fill_manual(values = c("grey", "red"),
+                    breaks=c("np", "p"),
+                    name="Para treatment",
+                    label=c("NP", "P"))
 
 
 #-------------------
