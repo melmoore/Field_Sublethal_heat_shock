@@ -4,7 +4,7 @@
 
 library(readr)
 library(dplyr)
-
+library(tidyr)
 
 
 
@@ -490,9 +490,199 @@ slhs[, c("date.hatch", "date.died", "date.coll", "date.ovp", "time.ovp", "date.3
          "date.died.mongo", "date5.2wks", "date5.3wks", "date.p6.wk1", "date.p6.wk2", "date.p6.wk3", 
          "date.p7.wk1", "date.em", "date.ecl", "date.died.mongo.j", "p5", "p6", "p7", "pwand")] <-list(NULL)
 
-#Saving cleaned slhs data (still has dead individuals for calculating survival)
 
-write.csv(slhs, "Field_SLHS_clean.csv", row.names=FALSE)
+#Fixing typo in date wander for id 426: mass was put into date column, which converted into a date string
+#when downloaded from Google drive. Went back to the original google drive sheet, found the error
+#and original mass. Searched through google drive version history, and found that the mass was input
+#on 9/8/18 (Julian day 251), which makes this the most likely date of wandering
+
+which(slhs$id==426)
+
+slhs[208, 56]<-251
+slhs[208, 21]<-5099.05
+
+
+#--------------------
+
+#Calculate dev times
+
+slhs$ttwand<-slhs$date.wand.j - slhs$date.hatch.j
+slhs$ttem.w<-slhs$date.em.j - slhs$date.ovp.j
+slhs$ttem.h<-slhs$date.em.j - slhs$date.hatch.j
+slhs$tt3<-slhs$date.3.j - slhs$date.hatch.j
+slhs$tt4<-slhs$date.4.j - slhs$date.hatch.j
+slhs$tt5<-slhs$date.5.j - slhs$date.hatch.j
+slhs$tt6<-slhs$date.6.j - slhs$date.hatch.j
+slhs$tt7<-slhs$date.7.j - slhs$date.hatch.j
+slhs$ttcull<-slhs$date.cull.j - slhs$date.hatch.j
+
+slhs$ttp5.1<-slhs$date.p5.1 - slhs$date.hatch.j
+slhs$ttp5.2<-slhs$date.p5.2 - slhs$date.hatch.j
+slhs$ttp5.3<-slhs$date.p5.3 - slhs$date.hatch.j
+slhs$ttp5.4<-slhs$date.p5.4 - slhs$date.hatch.j
+slhs$ttp5.5<-slhs$date.p5.5 - slhs$date.hatch.j
+
+
+#Removing negative ages 
+slhs$tt3[is.na(slhs$tt3)]<-0
+slhs$tt4[is.na(slhs$tt4)]<-0
+slhs$tt5[is.na(slhs$tt5)]<-0
+slhs$tt6[is.na(slhs$tt6)]<-0
+slhs$tt7[is.na(slhs$tt7)]<-0
+slhs$ttem.w[is.na(slhs$ttem.w)]<-0
+slhs$ttem.h[is.na(slhs$ttem.h)]<-0
+slhs$ttwand[is.na(slhs$ttwand)]<-0
+slhs$ttcull[is.na(slhs$ttcull)]<-0
+slhs$ttp5.1[is.na(slhs$ttp5.1)]<-0
+slhs$ttp5.2[is.na(slhs$ttp5.2)]<-0
+slhs$ttp5.3[is.na(slhs$ttp5.3)]<-0
+slhs$ttp5.4[is.na(slhs$ttp5.4)]<-0
+slhs$ttp5.5[is.na(slhs$ttp5.5)]<-0
+
+
+slhs$tt3<-ifelse(slhs$tt3 < 0, 0, slhs$tt3)
+slhs$tt4<-ifelse(slhs$tt4 < 0, 0, slhs$tt4)
+slhs$tt5<-ifelse(slhs$tt5 < 0, 0, slhs$tt5)
+slhs$tt6<-ifelse(slhs$tt6 < 0, 0, slhs$tt6)
+slhs$tt7<-ifelse(slhs$tt7 < 0, 0, slhs$tt7)
+slhs$ttem.w<-ifelse(slhs$ttem.w < 0, 0, slhs$ttem.w)
+slhs$ttem.h<-ifelse(slhs$ttem.h < 0, 0, slhs$ttem.h)
+slhs$ttwand<-ifelse(slhs$ttwand < 0, 0, slhs$ttwand)
+slhs$ttcull<-ifelse(slhs$ttcull < 0, 0, slhs$ttcull)
+slhs$ttp5.1<-ifelse(slhs$ttp5.1 < 0, 0, slhs$ttp5.1)
+slhs$ttp5.2<-ifelse(slhs$ttp5.2 < 0, 0, slhs$ttp5.2)
+slhs$ttp5.3<-ifelse(slhs$ttp5.3 < 0, 0, slhs$ttp5.3)
+slhs$ttp5.4<-ifelse(slhs$ttp5.4 < 0, 0, slhs$ttp5.4)
+slhs$ttp5.5<-ifelse(slhs$ttp5.5 < 0, 0, slhs$ttp5.5)
+
+
+slhs$tt3[(slhs$tt3)=="0"]<-NA
+slhs$tt4[(slhs$tt4)=="0"]<-NA
+slhs$tt5[(slhs$tt5)=="0"]<-NA
+slhs$tt6[(slhs$tt6)=="0"]<-NA
+slhs$tt7[(slhs$tt7)=="0"]<-NA
+slhs$ttem.w[(slhs$ttem.w)=="0"]<-NA
+slhs$ttem.h[(slhs$ttem.h)=="0"]<-NA
+slhs$ttwand[(slhs$ttwand)=="0"]<-NA
+slhs$ttcull[(slhs$ttcull)=="0"]<-NA
+slhs$ttp5.1[(slhs$ttp5.1)=="0"]<-NA
+slhs$ttp5.2[(slhs$ttp5.2)=="0"]<-NA
+slhs$ttp5.3[(slhs$ttp5.3)=="0"]<-NA
+slhs$ttp5.4[(slhs$ttp5.4)=="0"]<-NA
+slhs$ttp5.5[(slhs$ttp5.5)=="0"]<-NA
+
+
+
+#---------------------
+
+#Making 0s in the post 5th measurements turn to NAs
+slhs$date.p5.1[slhs$date.p5.1=="0"]<-NA
+slhs$date.p5.2[slhs$date.p5.2=="0"]<-NA
+slhs$date.p5.3[slhs$date.p5.3=="0"]<-NA
+slhs$date.p5.4[slhs$date.p5.4=="0"]<-NA
+slhs$date.p5.5[slhs$date.p5.5=="0"]<-NA
+
+slhs$mass.p5.1[slhs$mass.p5.1=="0"]<-NA
+slhs$mass.p5.2[slhs$mass.p5.2=="0"]<-NA
+slhs$mass.p5.3[slhs$mass.p5.3=="0"]<-NA
+slhs$mass.p5.4[slhs$mass.p5.4=="0"]<-NA
+slhs$mass.p5.5[slhs$mass.p5.5=="0"]<-NA
+
+slhs$inst.p5.1[slhs$inst.p5.1=="0"]<-NA
+slhs$inst.p5.2[slhs$inst.p5.2=="0"]<-NA
+slhs$inst.p5.3[slhs$inst.p5.3=="0"]<-NA
+slhs$inst.p5.4[slhs$inst.p5.4=="0"]<-NA
+slhs$inst.p5.5[slhs$inst.p5.5=="0"]<-NA
+
+#------------------
+
+#Calculating survival in each treatment before removing dead individuals for clean data set
+
+#calculating % host survival for each treatment
+
+surv<-slhs %>% count(treat.para, test.temp)
+
+died<-slhs %>% count(treat.para, test.temp, died.toss)
+
+died<-subset(died,died.toss=="1")
+died.n<-died[,4]
+
+
+surv<-surv %>% mutate(died.n = died$n)
+surv<-dplyr::rename(surv, tot.n=n)
+
+
+surv<-surv %>% mutate(surv.prop = 1-(died.n/tot.n))
+
+
+write.csv(surv, "field-slhs_treat-surv-table.csv",row.names = FALSE)
+
+
+#-------------
+
+#creating long data set of mass and age (keeping np and p in same dataframe, so including mongo
+  ## columns even for np individuals)
+
+
+#long mass data
+slhs.mlng<-slhs %>% gather(instar, mass, mass.3, mass.4, mass.5, mass.6, mass.7, mass.wand, mass.48em,
+                                mass.p5.1, mass.p5.2, mass.p5.3, mass.p5.4, mass.p5.5)
+
+
+#rename instar column levels
+slhs.mlng$instar<-gsub("mass.", "", slhs.mlng$instar)
+slhs.mlng$instar<-gsub("48", "", slhs.mlng$instar)
+
+
+#long age data (ttem will be for hosts (from hatching to emergence))
+slhs.alng<-slhs %>% gather(instar, age, tt3, tt4, tt5, tt6, tt7, ttwand, ttem.h, 
+                                ttp5.1, ttp5.2, ttp5.3, ttp5.4, ttp5.5)
+
+#rename instar column levels so they match long mass data frame
+slhs.alng$instar<-gsub("tt", "", slhs.alng$instar)
+slhs.alng$instar<-gsub(".h", "", slhs.alng$instar)
+
+#long data frame for post 5th stages (so they have their "stage"/"class"--died, wander, emerge, etc)
+slhs.stage<-slhs %>% gather(instar, stage, mass.3, mass.4, mass.5, mass.6, mass.7, mass.wand, mass.48em,
+                                 inst.p5.1, inst.p5.2, inst.p5.3, inst.p5.4, inst.p5.5)
+
+#rename columns
+slhs.stage$instar<-gsub("mass.", "", slhs.stage$instar)
+slhs.stage$instar<-gsub("48", "", slhs.stage$instar)
+slhs.stage$instar<-gsub("inst.", "", slhs.stage$instar)
+
+
+#Make stage = NA for those rows that aren't inst.p5.X (removes masses that I included to make the 
+  ## row numbers the same between data frames)
+
+#make stage == NAs 0s so the ifelse will run properly
+slhs.stage$stage[is.na(slhs.stage$stage)]<-0
+
+#ifelse statement to replace dummy mass values with 0s, but keep actual stage classifications
+slhs.stage$stage<-ifelse(slhs.stage$stage!="5" & slhs.stage$stage!="6" & slhs.stage$stage!="7" & 
+               slhs.stage$stage!="cull" & slhs.stage$stage!="died" & slhs.stage$stage!="wand", 
+             0, slhs.stage$stage)
+
+#replace stage 0s with NAs
+slhs.stage$stage[slhs.stage$stage=="0"]<-NA
+
+
+#Merging various long datasets together
+
+slhs.mlng<-select(slhs.mlng, id, test.temp, instar, mass)
+slhs.alng<-select(slhs.alng, id, test.temp, instar, age)
+slhs.lng<-merge(slhs.mlng, slhs.alng, by=c("id", "test.temp", "instar"))
+slhs.lng<-merge(slhs.lng, slhs.stage, by=c("id", "test.temp", "instar"))
+
+
+#-----------------
+
+
+#Saving cleaned slhs data (keeping dead individuals for investigating survival metrics)
+  ##saving long data frame as well
+
+write.csv(slhs, "Field_SLHS_clean_wdead.csv", row.names=FALSE)
+write.csv(slhs.lng, "Field_SLHS_clean_wdead_LONG.csv", row.names=FALSE)
 
 
 
