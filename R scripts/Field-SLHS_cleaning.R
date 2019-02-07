@@ -480,6 +480,18 @@ slhs<-slhs %>% mutate(delta.mass.bf.test = (mass.in.test - mass.3))
 
 slhs$mongo<-ifelse(slhs$date.p5.1=="0", 0, 1)
 
+#A few mongos with messy data did not have a 1 added in their binary data--adding now.
+  ##sometime should go back and fix in above mess of code
+
+which(slhs$id==101)
+slhs[252,37]<-1
+
+which(slhs$id==376)
+slhs[293,37]<-1
+
+which(slhs$id==284)
+slhs[417,37]<-1
+
 
 #-----------------
 
@@ -502,6 +514,12 @@ slhs[208, 56]<-251
 slhs[208, 21]<-5099.05
 
 
+#removing some individuals with missing data
+
+#getting rid of an individual with incomplete data that slipped through the cleaning
+slhs<-subset(slhs, id!=195 & id!=83 & id!=492 &id!=331 & id!=342 & id!=308 & id!=60)
+
+
 #--------------------
 
 #Calculate dev times
@@ -515,7 +533,6 @@ slhs$tt5<-slhs$date.5.j - slhs$date.hatch.j
 slhs$tt6<-slhs$date.6.j - slhs$date.hatch.j
 slhs$tt7<-slhs$date.7.j - slhs$date.hatch.j
 slhs$ttcull<-slhs$date.cull.j - slhs$date.hatch.j
-slhs$ttend<-slhs$date.end - slhs$date.hatch.j
 
 slhs$ttp5.1<-slhs$date.p5.1 - slhs$date.hatch.j
 slhs$ttp5.2<-slhs$date.p5.2 - slhs$date.hatch.j
@@ -641,6 +658,9 @@ slhs$date.em.j[slhs$date.em.j==0]<-NA
 #coalesce approp. date columns into an end date column
 slhs$date.end<-coalesce(slhs$date.wand.j, slhs$date.cull.j, slhs$date.em.j)
 
+#calculating dev time from hatching to end
+slhs$ttend<-slhs$date.end - slhs$date.hatch.j
+
 #I'm ignoring individuals that died as mongos before weighing--there are only 8 of them,
   ## and it doesn't make sense to put them in the same category as the others
 
@@ -701,6 +721,7 @@ slhs.alng<-select(slhs.alng, id, test.temp, instar, age)
 slhs.lng<-merge(slhs.mlng, slhs.alng, by=c("id", "test.temp", "instar"))
 slhs.lng<-merge(slhs.lng, slhs.stage, by=c("id", "test.temp", "instar"))
 
+View(slhs.lng)
 
 #-----------------
 
