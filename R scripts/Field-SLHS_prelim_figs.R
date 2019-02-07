@@ -162,12 +162,26 @@ lmsum.plot+geom_point(aes(shape=instar),
 #Color by para, panel by test temp
 lmsum.plot2<-ggplot(lm.sum.neat, aes(x=age, y=log.mass, group=treat.para,
                                     color=treat.para))
-lmsum.plot2+geom_point(size=3
-)+geom_line(size=1.2
+lmsum.plot2+geom_point(aes(shape=treat.para),
+                       size=3
+)+geom_line(aes(linetype=treat.para),
+            size=1.2
 )+geom_errorbar(aes(ymin=log.mass-se, ymax=log.mass+se),
                 width=.4, size=1
 )+geom_errorbarh(aes(xmin=age-age.se, xmax=age+age.se),
                  height=.4, size=1
+)+scale_color_manual(values=c("black", "red"),
+                     breaks=c("np", "p"),
+                     label=c("NP", "P"),
+                     name="Parasitized"
+)+scale_linetype_manual(values=c("solid", "dashed"),
+                        breaks=c("np", "p"),
+                        label=c("NP", "P"),
+                        name="Parasitized"
+)+scale_shape_manual(values=c(16, 17),
+                     breaks=c("np", "p"),
+                     label=c("NP", "P"),
+                     name="Parasitized"
 )+facet_wrap(~test.temp)
 
 #--------------------------
@@ -196,6 +210,28 @@ slhs$died.toss<-as.factor(slhs$died.toss)
 #load surv data frame to add labels with sample size
 surv <- read_csv("data files/field-slhs_treat-surv-table.csv")
 
+#create a surv.n column with the number that survived in each treatment
+surv$surv.n<-surv$tot.n-surv$died.n
+
+#make a long dataframe from surv data set
+surv_lng<-gather(surv, died, n, surv.n, died.n)
+
+#rename surv_lng column names so they match the aesthetics of the plot
+surv_lng<-rename(surv_lng, delta.mass.test=n)
+
+#make a died.toss column to match aesthetics of plot
+surv_lng$died.toss<-ifelse(surv_lng$died=="surv.n", 0, 1)
+
+#make surv_lng$died.toss and surv_lng$test.temp factors so they will plot appropriately
+surv_lng$died.toss<-as.factor(surv_lng$died.toss)
+surv_lng$test.temp<-as.factor(surv_lng$test.temp)
+
+#Making a column in surv_lng with y axis data that will match the label with the boxplot
+  ##there should be an easier way to do this, but I'm tired of looking
+surv_lng$ypos<-c(100, 45, 45, 30, 10, 55, 40, 16, 19, 10,
+                25, 25, 18, 10, 12, 30, 20, 10, 10, 8)
+
+
 dmass.dead.plot<-ggplot(slhs, aes(x=test.temp, y=delta.mass.test, 
                                   group=interaction(test.temp, died.toss),
                                   fill=died.toss))
@@ -204,6 +240,91 @@ dmass.dead.plot+geom_boxplot(
                     breaks=c("0", "1"),
                     label=c("Lived", "Died"),
                     name="Survival"
-)+geom_text(
-)+facet_wrap(~treat.para)
+)+facet_wrap(~treat.para
+)+geom_text(data=surv_lng,aes(x=test.temp, y=ypos, label = n, fontface="bold"),
+            position = position_dodge(.7))
+
+
+
+#plotting delta.mass.test by mass at start of test
+
+initmass.plot<-ggplot(slhs, aes(x=mass.in.test, y=delta.mass.test, color=died.toss))
+initmass.plot+geom_point(
+)+scale_color_manual(values=c("black", "red"),
+                     breaks=c("0", "1"),
+                     label=c("Lived", "Died"),
+                     name="Survived"
+)+geom_smooth(method=lm, se=FALSE
+)+facet_wrap(test.temp~treat.para)
+
+
+
+#plotting mean delta.mass.test 
+
+dmass.sum<-summarySE(slhs, measurevar = "delta.mass.test",
+                     groupvars = c("test.temp", "treat.para", "died.toss"),
+                     na.rm = TRUE)
+dmass.sum
+
+
+dmass.mn.plot<-ggplot(dmass.sum, aes(x=test.temp, y=delta.mass.test,
+                                     group=treat.para, color=treat.para))
+dmass.mn.plot+geom_point(aes(shape=treat.para),
+                         size=4
+)+geom_line(aes(linetype=treat.para),
+            size=1.5
+)+geom_errorbar(aes(ymin=delta.mass.test-se, ymax=delta.mass.test+se),
+                width=.3, size=1
+)+scale_color_manual(values=c("black", "red"),
+                     breaks=c("np", "p"),
+                     label=c("NP", "P"),
+                     name="Parasitized"
+)+scale_linetype_manual(values=c("solid", "dashed"),
+                        breaks=c("np", "p"),
+                        label=c("NP", "P"),
+                        name="Parasitized"
+)+scale_shape_manual(values=c(16, 17),
+                     breaks=c("np", "p"),
+                     label=c("NP", "P"),
+                     name="Parasitized"
+)+facet_wrap(~died.toss)
+
+
+
+#plotting mean initial mass by temp
+
+initmass.sum<-summarySE(slhs, measurevar = "mass.in.test",
+                        groupvars = c("test.temp", "treat.para", "died.toss"),
+                        na.rm = TRUE)
+initmass.sum
+
+mninmass.plot<-ggplot(initmass.sum, aes(x=test.temp, y=mass.in.test,
+                                        group=treat.para, color=treat.para))
+mninmass.plot+geom_point(aes(shape=treat.para),
+                         size=4
+)+geom_line(aes(linetype=treat.para),
+            size=1.5
+)+geom_errorbar(aes(ymin=mass.in.test-se, ymax=mass.in.test+se),
+                width=.3, size=1
+)+scale_color_manual(values=c("black", "red"),
+                     breaks=c("np", "p"),
+                     label=c("NP", "P"),
+                     name="Parasitized"
+)+scale_linetype_manual(values=c("solid", "dashed"),
+                        breaks=c("np", "p"),
+                        label=c("NP", "P"),
+                        name="Parasitized"
+)+scale_shape_manual(values=c(16, 17),
+                     breaks=c("np", "p"),
+                     label=c("NP", "P"),
+                     name="Parasitized"
+)+facet_wrap(~died.toss)
+
+
+
+
+
+
+
+
 
