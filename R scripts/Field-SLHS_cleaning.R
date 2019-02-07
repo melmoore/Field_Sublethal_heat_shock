@@ -515,6 +515,7 @@ slhs$tt5<-slhs$date.5.j - slhs$date.hatch.j
 slhs$tt6<-slhs$date.6.j - slhs$date.hatch.j
 slhs$tt7<-slhs$date.7.j - slhs$date.hatch.j
 slhs$ttcull<-slhs$date.cull.j - slhs$date.hatch.j
+slhs$ttend<-slhs$date.end - slhs$date.hatch.j
 
 slhs$ttp5.1<-slhs$date.p5.1 - slhs$date.hatch.j
 slhs$ttp5.2<-slhs$date.p5.2 - slhs$date.hatch.j
@@ -620,13 +621,39 @@ write.csv(surv, "field-slhs_treat-surv-table.csv",row.names = FALSE)
 
 #-------------
 
+#creating an "end" category for age and mass, to use for plotting purposes
+  ##Plotting with all instar data leads to a mess, since only a fraction have 6+ instars or post 5th
+  ##measurements
+
+#set appropriate mass column 0s to NAs so colaesce() will read them as missing values
+slhs$mass.wand[slhs$mass.wand==0]<-NA
+slhs$mass.cull[slhs$mass.cull==0]<-NA
+slhs$mass.48em[slhs$mass.48em==0]<-NA
+
+#coalesce approp. mass columns into an end mass column
+slhs$mass.end<-coalesce(slhs$mass.wand, slhs$mass.cull, slhs$mass.48em)
+
+#set appropriate date column 0s to NAs so colaesce() will read them as missing values
+slhs$date.wand.j[slhs$date.wand.j==0]<-NA
+slhs$date.cull.j[slhs$date.cull.j==0]<-NA
+slhs$date.em.j[slhs$date.em.j==0]<-NA
+
+#coalesce approp. date columns into an end date column
+slhs$date.end<-coalesce(slhs$date.wand.j, slhs$date.cull.j, slhs$date.em.j)
+
+#I'm ignoring individuals that died as mongos before weighing--there are only 8 of them,
+  ## and it doesn't make sense to put them in the same category as the others
+
+
+#--------------
+
 #creating long data set of mass and age (keeping np and p in same dataframe, so including mongo
   ## columns even for np individuals)
 
 
 #long mass data
 slhs.mlng<-slhs %>% gather(instar, mass, mass.3, mass.4, mass.5, mass.6, mass.7, mass.wand, mass.48em,
-                                mass.p5.1, mass.p5.2, mass.p5.3, mass.p5.4, mass.p5.5)
+                                mass.end, mass.p5.1, mass.p5.2, mass.p5.3, mass.p5.4, mass.p5.5)
 
 
 #rename instar column levels
@@ -635,7 +662,7 @@ slhs.mlng$instar<-gsub("48", "", slhs.mlng$instar)
 
 
 #long age data (ttem will be for hosts (from hatching to emergence))
-slhs.alng<-slhs %>% gather(instar, age, tt3, tt4, tt5, tt6, tt7, ttwand, ttem.h, 
+slhs.alng<-slhs %>% gather(instar, age, tt3, tt4, tt5, tt6, tt7, ttwand, ttem.h, ttend,
                                 ttp5.1, ttp5.2, ttp5.3, ttp5.4, ttp5.5)
 
 #rename instar column levels so they match long mass data frame
@@ -644,7 +671,7 @@ slhs.alng$instar<-gsub(".h", "", slhs.alng$instar)
 
 #long data frame for post 5th stages (so they have their "stage"/"class"--died, wander, emerge, etc)
 slhs.stage<-slhs %>% gather(instar, stage, mass.3, mass.4, mass.5, mass.6, mass.7, mass.wand, mass.48em,
-                                 inst.p5.1, inst.p5.2, inst.p5.3, inst.p5.4, inst.p5.5)
+                                 mass.end, inst.p5.1, inst.p5.2, inst.p5.3, inst.p5.4, inst.p5.5)
 
 #rename columns
 slhs.stage$instar<-gsub("mass.", "", slhs.stage$instar)

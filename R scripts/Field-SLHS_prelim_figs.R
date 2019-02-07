@@ -21,7 +21,7 @@ slhs <- read_csv("data files/Field_SLHS_clean_wdead.csv",
 View(slhs)
 
 
-slhs_long <- read_csv("data files/Field_SLHS_clean_wdead_LONG.csv", guess_max = 6000,
+slhs_lng <- read_csv("data files/Field_SLHS_clean_wdead_LONG.csv", guess_max = 6000,
                       col_types = cols(test.temp = col_factor(levels = c("35", "40", "42", "43", "44")), 
                                        treat.hs = col_factor(levels = c("control", "shock")), 
                                        treat.para = col_factor(levels = c("np", "p"))))
@@ -87,47 +87,123 @@ massw.boxplot+geom_boxplot(
                     label=c("NP", "P"))
 
 
+
+
 #-------------------
+
 
 #Plotting mass X age for para treatment
   ##for individuals
 
 #removing individual with typo in mass
+which(slhs_lng$mass > 60000)
+slhs_lng<-slhs_lng[-816,]
+slhs_lng<-slhs_lng[-6049,]
 
-slhs.plng<-subset(slhs.plng, mass < 60000)
+#Make 0s in mass column == NAs 
+slhs_lng$mass[slhs_lng$mass==0]<-NA
 
 #logging mass
+slhs_lng$log.mass<-log(slhs_lng$mass)
 
-slhs.plng$log.mass<-log(slhs.plng$mass)
+#removing dead individuals
+slhs_lngc<-subset(slhs_lng, died.toss==0)
 
-indmass.plot<-ggplot(slhs.plng, aes(x=age, y=log.mass, group=interaction(id, test.temp), color=test.temp))
+
+
+#individuals plot with test temp by color and panel by para
+indmass.plot<-ggplot(slhs_lngc, aes(x=age, y=log.mass, group=interaction(id, test.temp), color=test.temp))
 indmass.plot+geom_line(size=1
-)+geom_point(aes(shape=stage), size=3
-)+facet_wrap(~mongo)
+)+geom_point(size=3
+)+facet_wrap(~treat.para)
+
+
+#individuals plot with para by color and panel by test temp
+indmass.plot2<-ggplot(slhs_lngc, aes(x=age, y=log.mass, group=interaction(id, treat.para), color=treat.para))
+indmass.plot2+geom_line(size=1
+)+geom_point(size=3
+)+facet_wrap(~test.temp)
 
 
 #Plotting the mean mass at each measurement
 
 #SummarySE of mass
 
-lm.sum<-summarySE(slhs.plng, measurevar = "log.mass",
-                  groupvars = c("test.temp", "instar"),
+lm.sum<-summarySE(slhs_lngc, measurevar = "log.mass",
+                  groupvars = c("test.temp", "treat.para", "instar"),
                   na.rm=TRUE)
 lm.sum
 
+#subsetting to only the 3, 4, 5 and end data, to try and make more meaningful plot
+lm.sum.neat<-subset(lm.sum, instar=="3" | instar=="4" | instar=="5" | instar=="end")
 
-age.sum<-summarySE(slhs.plng, measurevar = "age",
-                   groupvars = c("test.temp", "instar"),
+
+age.sum<-summarySE(slhs_lngc, measurevar = "age",
+                   groupvars = c("test.temp", "treat.para","instar"),
                    na.rm=TRUE)
 age.sum
 
-lm.sum$age<-age.sum[,4]
-lm.sum$age.se<-age.sum[,6]
+#subsetting to only the 3, 4, 5 and end data, to try and make more meaningful plot
+age.sum.neat<-subset(age.sum, instar=="3" | instar=="4" | instar=="5" | instar=="end")
 
 
-lmsum.plot<-ggplot(lm.sum, aes(x=age, y=log.mass, group=test.temp, color=test.temp))
-lmsum.plot+geom_point(
-)+geom_line()
+lm.sum.neat$age<-age.sum.neat[,5]
+lm.sum.neat$age.se<-age.sum.neat[,7]
 
 
+#Color by test temp, panel by para
+lmsum.plot<-ggplot(lm.sum.neat, aes(x=age, y=log.mass, group=test.temp,
+                               color=test.temp))
+lmsum.plot+geom_point(aes(shape=instar),
+                      size=3
+)+geom_line(size=1.2
+)+facet_wrap(~treat.para)
+
+#Color by para, panel by test temp
+lmsum.plot2<-ggplot(lm.sum.neat, aes(x=age, y=log.mass, group=treat.para,
+                                    color=treat.para))
+lmsum.plot2+geom_point(size=3
+)+geom_line(size=1.2
+)+geom_errorbar(aes(ymin=log.mass-se, ymax=log.mass+se),
+                width=.4, size=1
+)+geom_errorbarh(aes(xmin=age-age.se, xmax=age+age.se),
+                 height=.4, size=1
+)+facet_wrap(~test.temp)
+
+#--------------------------
+
+#plotting the change in mass during heat shock
+
+#scatterplot
+dmass.plot<-ggplot(slhs.cl, aes(x=test.temp, y=delta.mass.test, color=treat.para))
+dmass.plot+geom_jitter()
+
+#boxplot
+dmass.plot2<-ggplot(slhs.cl, aes(x=test.temp, y=delta.mass.test, fill=treat.para))
+dmass.plot2+geom_boxplot(
+)+scale_fill_manual(values=c("grey", "orangered3"),
+                    breaks=c("np", "p"),
+                    label=c("NP", "P"),
+                    name="Parasitization")
+
+
+#plotting with dead individuals included
+#boxplot
+
+#making died.toss a factor for plotting purposes
+slhs$died.toss<-as.factor(slhs$died.toss)
+
+#load surv data frame to add labels with sample size
+surv <- read_csv("data files/field-slhs_treat-surv-table.csv")
+
+dmass.dead.plot<-ggplot(slhs, aes(x=test.temp, y=delta.mass.test, 
+                                  group=interaction(test.temp, died.toss),
+                                  fill=died.toss))
+dmass.dead.plot+geom_boxplot(
+)+scale_fill_manual(values=c("grey", "orangered3"),
+                    breaks=c("0", "1"),
+                    label=c("Lived", "Died"),
+                    name="Survival"
+)+geom_text(
+)+facet_wrap(~treat.para)
 
