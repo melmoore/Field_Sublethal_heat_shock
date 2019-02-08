@@ -47,8 +47,11 @@ ttw.sum
 
 #plot of ttwand and mass.wand, group by treat.para
 
+slhs.cl$para.pup[is.na(slhs.cl$para.pup)]<-0
+slhs.cl$para.pup<-as.factor(slhs.cl$para.pup)
+
 ttw.plot<-ggplot(slhs.cl, aes(x=ttwand, y=mass.wand, group=treat.para, color=treat.para))
-ttw.plot+geom_point(
+ttw.plot+geom_point(aes(shape=para.pup)
        )+geom_smooth(method="lm", se=FALSE
        )+facet_wrap(~test.temp)
 
@@ -87,6 +90,91 @@ massw.boxplot+geom_boxplot(
                     label=c("NP", "P"))
 
 
+#------------------
+
+#calculating proportion of each "outcome" for each temp and para treatment
+  
+slhs.cl$mass.wand[is.na(slhs.cl$mass.wand)]<-0
+slhs.cl$wander<-ifelse(slhs.cl$mass.wand>0, 1, 0)
+
+outcome<-slhs.cl %>% group_by(test.temp, treat.para) %>% tally(wander)
+View(outcome)
+
+
+#find total number in each treatment
+tot.n<-slhs.cl %>% count(test.temp, treat.para)
+
+#add total number to dataframe with number of outcomeers
+outcome$tot.n<-tot.n$n  
+
+#rename outcome$n to outcome$wander to avoid confusion
+outcome<-rename(outcome, wander=n)
+
+#calculate proportion of outcomeers
+outcome$prop.wand<-outcome$wander/outcome$tot.n
+
+#calculate the number in each treatment that had wasp emergence
+slhs.cl$date.em.j[is.na(slhs.cl$date.em.j)]<-0
+slhs.cl$emergence<-ifelse(slhs.cl$date.em.j>0, 1, 0)
+
+emerge<-slhs.cl %>% group_by(test.temp, treat.para) %>% tally(emergence)
+View(emerge)
+
+#add emergence data to outcome dataframe
+outcome$emerge<-emerge$n
+
+#calculate proportion emergence
+outcome$prop.emerge<-outcome$emerge/outcome$tot.n
+
+
+#Make a mongo sorting column specifically for mongos that were not wanderers
+slhs.cl$mongo.calc<-ifelse(slhs.cl$mongo==1 & slhs.cl$mass.wand==0, 1, 0)
+
+
+#calculate the number in each treatment that were culled (assumed mongos)
+mongo<-slhs.cl %>% group_by(test.temp, treat.para) %>% tally(mongo.calc)
+View(mongo)
+
+#add mongo data to outcome dataframe
+outcome$mongo<-mongo$n
+
+#calculate the proportion of mongos in each treatment
+outcome$prop.mongo<-outcome$mongo/outcome$tot.n
+
+
+
+#Making a long data frame of the outcome data
+oc_lng<-gather(outcome, outcome, prop, prop.wand, prop.emerge, prop.mongo)
+
+
+
+#Plotting prop outcomes for each test temperature and para treatment
+
+outcome.plot<-ggplot(oc_lng,aes(x=test.temp ,y=prop, fill=outcome))
+outcome.plot+geom_bar(position="fill",stat="identity"
+)+scale_fill_manual(values=c("#95D840", "#1F9F88", "#440D54"),
+                    breaks=c("prop.emerge", "prop.mongo", "prop.wand"),
+                    labels=c("Emergence", "Mongo", "Wandering"),
+                    name="Outcome"
+)+labs(x="Test temperature", y="Proportion"
+)+facet_wrap(~treat.para
+)+theme(text = element_text(family=("Cambria")),
+        strip.background = element_rect(colour="black",linetype = "solid",fill="white",
+                                        size = 1),
+        strip.text = element_text(size=30),
+        axis.line.x=element_line(colour = 'black', size = 1),
+        axis.line.y=element_line(colour = 'black', size = 1),
+        axis.ticks = element_line(colour = 'black', size = 1),
+        axis.ticks.length = unit(2, "mm"),
+        axis.text.x = element_text(size = 26),
+        axis.text.y = element_text(size = 26),
+        axis.title.x = element_text(size = 30),
+        axis.title.y = element_text(size = 30),
+        legend.key.width=unit(15,"mm"),
+        legend.key.height = unit(10,"mm"),
+        legend.text=element_text(size=18),
+        legend.title=element_text(size=20),
+        legend.background = element_rect(color="black",linetype="solid",size=1))
 
 
 #-------------------
@@ -98,7 +186,7 @@ massw.boxplot+geom_boxplot(
 #removing individual with typo in mass
 which(slhs_lng$mass > 60000)
 slhs_lng<-slhs_lng[-816,]
-slhs_lng<-slhs_lng[-6049,]
+slhs_lng<-slhs_lng[-5971,]
 
 #Make 0s in mass column == NAs 
 slhs_lng$mass[slhs_lng$mass==0]<-NA
@@ -125,7 +213,11 @@ indmass.plot2+geom_line(size=1
 )+facet_wrap(~test.temp)
 
 
-#Plotting the mean mass at each measurement
+#-------------------
+
+
+#Plotting mass X age for para treatment
+##means
 
 #SummarySE of mass
 
@@ -323,8 +415,80 @@ mninmass.plot+geom_point(aes(shape=treat.para),
 
 
 
+#---------------------
+
+#plot last point, time and mass at end for parasitized
+
+#subset to parasitized treatment only
+slhs_para<-subset(slhs_lngc, treat.para=="p")
+
+#subset to only end data point
+slhs_para<-subset(slhs_para, instar=="end")
+
+#Make useful stage column for what the end point was (em, mong, wand)
+slhs_para$date.wand.j[is.na(slhs_para$date.wand.j)]<-0
+slhs_para$date.em.j[is.na(slhs_para$date.em.j)]<-0
+slhs_para$date.cull.j[is.na(slhs_para$date.cull.j)]<-0
+
+slhs_para$stage<-ifelse(slhs_para$date.wand.j>0, "wand",
+                        ifelse(slhs_para$date.em.j>0, "em",
+                               ifelse(slhs_para$date.cull.j, "cull", "0")))
+
+slhs_para$stage[slhs_para$stage=="0"]<-NA
+
+#plot age and mass at end data point
+end.plot<-ggplot(slhs_para, aes(x=age, y=mass, group=test.temp, color=test.temp))
+end.plot+geom_point(aes(shape=stage),
+                    size=5
+)+geom_smooth(method=lm, se=FALSE)
 
 
+
+massend.sum<-summarySE(slhs_para, measurevar = "mass",
+                   groupvars = c("test.temp", "stage"),
+                   na.rm = TRUE)
+massend.sum
+
+massend.sum<-subset(massend.sum, N!=0)
+
+
+ageend.sum<-summarySE(slhs_para, measurevar = "age",
+                      groupvars = c("test.temp", "stage"),
+                      na.rm = TRUE)
+ageend.sum
+
+ageend.sum<-subset(ageend.sum, N!=0)
+
+
+massend.sum$age<-ageend.sum[,4]
+massend.sum$age.se<-ageend.sum[,6]
+
+
+mnend.plot<-ggplot(massend.sum, aes(x=age, y=mass, group=stage, color=stage))
+mnend.plot+geom_point(size=5
+)+facet_wrap(~test.temp)
+
+
+
+#boxplots of mass and age
+
+massend.boxplot<-ggplot(slhs_para, aes(x=test.temp, y=mass, fill=stage))
+massend.boxplot+geom_boxplot(
+)+scale_fill_manual(values=c("#95D840", "#1F9F88", "#891BA9"),
+                    breaks=c("em", "cull", "wand"),
+                    labels=c("Emerged", "Culled", "Wandered"),
+                    name="Outcome"
+)+labs(x="Test temperature", y="Mass at End")
+       
+       
+
+ageend.boxplot<-ggplot(slhs_para, aes(x=test.temp, y=age, fill=stage))
+ageend.boxplot+geom_boxplot(
+)+scale_fill_manual(values=c("#95D840", "#1F9F88", "#891BA9"),
+                    breaks=c("em", "cull", "wand"),
+                    labels=c("Emerged", "Culled", "Wandered"),
+                    name="Outcome"
+)+labs(x="Test temperature", y="Age at End")
 
 
 
